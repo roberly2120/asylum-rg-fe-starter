@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { connect } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import CitizenshipMapAll from './Graphs/CitizenshipMapAll';
@@ -10,15 +10,19 @@ import YearLimitsSelect from './YearLimitsSelect';
 import ViewSelect from './ViewSelect';
 import axios from 'axios';
 import { resetVisualizationQuery } from '../../../state/actionCreators';
-import test_data from '../../../data/test_data.json';
+// import test_data from '../../../data/test_data.json';
 import { colors } from '../../../styles/data_vis_colors';
 import ScrollToTopOnMount from '../../../utils/scrollToTopOnMount';
 
 const { background_color } = colors;
 
+const fiscalURL = 'https://hrf-asylum-be-b.herokuapp.com/cases/fiscalsummary'; 
+const citizenshipURL = 'https://hrf-asylum-be-b.herokuapp.com/cases/citizenshipsummary';
+
 function GraphWrapper(props) {
   const { set_view, dispatch } = props;
   let { office, view } = useParams();
+  const [ rawData, setRawData ] = useState([]); // state variable to hold returned api data
   if (!view) {
     set_view('time-series');
     view = 'time-series';
@@ -50,7 +54,7 @@ function GraphWrapper(props) {
         break;
     }
   }
-  function updateStateWithNewData(years, view, office, stateSettingCallback) {
+ async function updateStateWithNewData(years, view, office, stateSettingCallback) {
     /*
           _                                                                             _
         |                                                                                 |
@@ -72,40 +76,31 @@ function GraphWrapper(props) {
                                    -- Mack 
     
     */
+      // check if data has already been recieved. If so, go ahead and pass in rawData to the callback. 
+      // If no data yet exists, make api calls and format the data to match test_data.json. pass the formatted data to the callback and set rawData to the same
+      if(rawData.length === 0) {
+        const [fiscalResponse, citizenshipResponse] = await Promise.all([
+          axios.get(`${fiscalURL}`, {
+            params: {
+              from: years[0],
+              to: years[1],
+            },
+          }),
+          axios.get(`${citizenshipURL}`)
+        ]);
+        const formattedData = [fiscalResponse.data];
+        formattedData[0].citizenshipResults = citizenshipResponse.data;
+        setRawData(formattedData);
+        stateSettingCallback(view, office, formattedData);
+      }
+      else {
+        stateSettingCallback(view, office, rawData);
+      }
+    } 
 
-    if (office === 'all' || !office) {
-      axios
-        .get(process.env.REACT_APP_API_URI, {
-          // mock URL, can be simply replaced by `${Real_Production_URL}/summary` in prod!
-          params: {
-            from: years[0],
-            to: years[1],
-          },
-        })
-        .then(result => {
-          stateSettingCallback(view, office, test_data); // <-- `test_data` here can be simply replaced by `result.data` in prod!
-        })
-        .catch(err => {
-          console.error(err);
-        });
-    } else {
-      axios
-        .get(process.env.REACT_APP_API_URI, {
-          // mock URL, can be simply replaced by `${Real_Production_URL}/summary` in prod!
-          params: {
-            from: years[0],
-            to: years[1],
-            office: office,
-          },
-        })
-        .then(result => {
-          stateSettingCallback(view, office, test_data); // <-- `test_data` here can be simply replaced by `result.data` in prod!
-        })
-        .catch(err => {
-          console.error(err);
-        });
-    }
-  }
+   
+
+  
   const clearQuery = (view, office) => {
     dispatch(resetVisualizationQuery(view, office));
   };
