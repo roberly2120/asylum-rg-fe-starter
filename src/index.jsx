@@ -10,6 +10,7 @@ import {
 import 'antd/dist/antd.less';
 import { NotFoundPage } from './components/pages/NotFound';
 import { LandingPage } from './components/pages/Landing';
+import UserProfile  from './components/pages/Profile/UserProfile';
 
 import { FooterContent, SubFooter } from './components/Layout/Footer';
 import { HeaderContent } from './components/Layout/Header';
@@ -23,17 +24,27 @@ import { configureStore } from '@reduxjs/toolkit';
 import reducer from './state/reducers';
 import { colors } from './styles/data_vis_colors';
 
+import { Auth0Provider } from '@auth0/auth0-react';
+
 const { primary_accent_color } = colors;
 
 const store = configureStore({ reducer: reducer });
 ReactDOM.render(
+  <Auth0Provider
+    domain="dev-2of1mhq37b6qg37p.us.auth0.com"
+    clientId="A6JZcXW4Z0dhCCzYzBIHoFJKF9hPyMiS"
+    authorizationParams={{
+      redirect_uri: window.location.origin
+    }}
+  >
   <Router>
     <Provider store={store}>
       <React.StrictMode>
         <App />
       </React.StrictMode>
     </Provider>
-  </Router>,
+  </Router>
+  </Auth0Provider>,
   document.getElementById('root')
 );
 
@@ -54,6 +65,7 @@ export function App() {
       <Switch>
         <Route path="/" exact component={LandingPage} />
         <Route path="/graphs" component={GraphsContainer} />
+        <Route path="/profile" component={UserProfile} />
         <Route component={NotFoundPage} />
       </Switch>
       <Footer
